@@ -16,7 +16,7 @@ import time
 st.set_page_config(layout="wide")
 
 # Sidebar: ranges and steps for time, T1, and T2
-st.sidebar.header("Sampling Parameters")
+st.sidebar.header("Sampling NMR Relaxation Parameters")
 
 # Time points
 t_min    = st.sidebar.number_input("Time t min (s)",     min_value=1e-4, value=1e-2, format="%.4f")
@@ -47,6 +47,25 @@ reg_method = st.sidebar.selectbox(
 )
 
 reg_param = st.sidebar.slider("Regularization λ", 1e-6, 1e-2, 1e-4, format="%.1e")
+
+# Plot options - Color maps and plot types
+st.sidebar.markdown("---")
+st.sidebar.header("Plot Options")
+
+# Available colormaps
+cmap_options = ['viridis', 'plasma', 'inferno', 'magma', 'cividis', 'hsv', 
+                'hot', 'cool', 'spring', 'summer', 'autumn', 'winter', 
+                'jet', 'rainbow', 'turbo']
+
+# Selectors for each plot
+cmap_true = st.sidebar.selectbox("True Distribution Colormap", cmap_options, index=5)
+cmap_rec = st.sidebar.selectbox("Reconstructed Distribution Colormap", cmap_options, index=5)
+cmap_res = st.sidebar.selectbox("Residual Plot Colormap", cmap_options, index=5)
+
+# Plot type selectors
+plot_type_options = ["contourf", "contour"]
+plot_type_true = st.sidebar.selectbox("True Distribution Plot Type", plot_type_options, index=0)
+plot_type_rec = st.sidebar.selectbox("Reconstructed Distribution Plot Type", plot_type_options, index=0)
 
 # Generate sampling vectors
 time_points = np.logspace(np.log10(t_min), np.log10(t_max), int(N_t))
@@ -120,7 +139,7 @@ f_rec_T1 = np.sum(f_rec, axis=1)    # Sum over T2 for each T1
 f_rec_T2 = np.sum(f_rec, axis=0)    # Sum over T1 for each T2
 
 # Plot
-st.title("NMR Relaxation Spectra Inversion")
+st.title("NMR Relaxation Spectra Tool Using Fredholm Inversion")
 
 # Display computation info
 col1, col2, col3 = st.columns(3)
@@ -139,11 +158,14 @@ ax1.set_xscale('log')
 ax1.set_xlabel("t (s)")
 ax1.set_ylabel("Signal")
 ax1.legend()
-ax1.set_title("Relaxation Signal")
+ax1.set_title("Magnetic Resonance Signal")
 
 # True distribution
 ax2 = plt.subplot(2, 3, 2)
-cp1 = ax2.contourf(T2_vals, T1_vals, f_true, levels=12, cmap='hsv')
+if plot_type_true == "contourf":
+    cp1 = ax2.contourf(T2_vals, T1_vals, f_true, levels=12, cmap=cmap_true)
+else:
+    cp1 = ax2.contour(T2_vals, T1_vals, f_true, levels=12, cmap=cmap_true)
 ax2.set_xscale('log')
 ax2.set_yscale('log')
 ax2.set_xlabel("T₂ (s)")
@@ -153,7 +175,10 @@ plt.colorbar(cp1, ax=ax2)
 
 # Recovered distribution
 ax3 = plt.subplot(2, 3, 3)
-cp2 = ax3.contourf(T2_vals, T1_vals, f_rec, levels=12, cmap='hsv')
+if plot_type_rec == "contourf":
+    cp2 = ax3.contourf(T2_vals, T1_vals, f_rec, levels=12, cmap=cmap_rec)
+else:
+    cp2 = ax3.contour(T2_vals, T1_vals, f_rec, levels=12, cmap=cmap_rec)
 ax3.set_xscale('log')
 ax3.set_yscale('log')
 ax3.set_xlabel("T₂ (s)")
@@ -187,7 +212,7 @@ residual = f_rec - f_true
 residual_norm = np.abs(residual) / np.max(np.abs(residual))  # Normalized residual
 im = ax6.imshow(residual_norm, extent=[np.log10(T2_min), np.log10(T2_max), 
                                        np.log10(T1_max), np.log10(T1_min)], 
-                aspect='auto', cmap='hsv')
+                aspect='auto', cmap=cmap_res)
 ax6.set_xlabel("log₁₀(T₂)")
 ax6.set_ylabel("log₁₀(T₁)")
 ax6.set_title("Normalized Residual (|f_rec - f_true|/max)")
