@@ -366,42 +366,27 @@ if input_mode == 'Local folder (path)':
     if dicom_dir and not os.path.isdir(dicom_dir):
         st.sidebar.error('Folder does not exist or is not accessible from server. Make sure Streamlit is running locally.')
 else:
-    uploaded = st.sidebar.file_uploader(
-        'Upload DICOM files (select multiple) or a ZIP of DICOMs',
-        accept_multiple_files=True,
-        type=["dcm", "zip"]
-    )
-
+    uploaded = st.sidebar.file_uploader('Upload DICOM files (select multiple) or a ZIP of DICOMs', accept_multiple_files=True, type=None)
     if uploaded:
         tmpdir = tempfile.mkdtemp(prefix='dicom_upload_')
-
-        # Save uploaded files
-        for uf in uploaded:
-            outp = os.path.join(tmpdir, uf.name)
-            with open(outp, 'wb') as f:
-                f.write(uf.getbuffer())
-
-            # If it's a ZIP → extract
-            if uf.name.lower().endswith(".zip"):
-                import zipfile
-                try:
-                    with zipfile.ZipFile(outp, 'r') as z:
-                        z.extractall(tmpdir)
-                    st.sidebar.info(f'Extracted ZIP into temporary folder: {tmpdir}')
-                except Exception as e:
-                    st.sidebar.error(f'Failed to extract zip: {e}')
-
-        # Recursively collect all .dcm files (case-insensitive)
-        dicom_files = []
-        for root, _, files in os.walk(tmpdir):
-            for f in files:
-                if f.lower().endswith(".dcm"):
-                    dicom_files.append(os.path.join(root, f))
-
-        if len(dicom_files) == 0:
-            st.sidebar.error("No DICOM (.dcm) files found in uploaded data.")
-            dicom_dir = None
+        zips = [u for u in uploaded if u.name.lower().endswith('.zip')]
+        if len(zips) > 0:
+            import zipfile
+            zipf = os.path.join(tmpdir, zips[0].name)
+            with open(zipf, 'wb') as f:
+                f.write(zips[0].getbuffer())
+            try:
+                with zipfile.ZipFile(zipf, 'r') as z:
+                    z.extractall(tmpdir)
+                st.sidebar.info(f'Extracted zip into temporary folder: {tmpdir}')
+                dicom_dir = tmpdir
+            except Exception as e:
+                st.sidebar.error(f'Failed to extract zip: {e}')
         else:
+            for uf in uploaded:
+                outp = os.path.join(tmpdir, uf.name)
+                with open(outp, 'wb') as f:
+                    f.write(uf.getbuffer())
             dicom_dir = tmpdir
 
 st.sidebar.header('Solver & grid settings')
